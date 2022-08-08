@@ -47,6 +47,8 @@ The [Gurobi](https://www.gurobi.com/) solver is used to solve our optimization p
 
 If you're willing to fork this project and play with larger problem instances you might need to ask/pay for a proper license, or rewrite the code to use a solver-agnostic package (e.g. [Pyomo](http://www.pyomo.org/)) with an open-source solver (e.g. [GLPK](https://www.gnu.org/software/glpk/)).
 
+> The error message "Model too large for size-limited Gurobi license" or "Model too large for restricted Gurobi license" is displayed when Gurobi uses a restricted, size-limited license, and the model size exceeds these limits, i.e., 2000 variables, 2000 linear constraints, and 200 variables if quadratic terms are present.
+
 
 ## How to use the project
 
