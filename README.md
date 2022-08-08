@@ -51,10 +51,14 @@ If you're willing to fork this project and play with larger problem instances yo
 ## How to use the project
 
 TODO:
-- [x] Write a quick recap on readings
-- [x] Ajouter PDF dans le repo
-- [x] poetry + pre-commit ?
-- [ ] Reproduce Gurobi model: https://www.youtube.com/watch?v=Jb4a8T5qyVQ
+- [ ] Implement several versions of newsvendor
+    - [ ] Multiple objectives:
+        - [ ] CVaR
+        - [ ] VaR
+        - [x] mean
+        - [ ] sum of several.
+    - [ ] Build simulator to compute metrics
+    - [ ] Refactor code
 - [ ] Implement exercices Saclay
 
 
