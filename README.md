@@ -30,7 +30,7 @@ poetry install
 ```
 
 You can run any python script locally with
-- `poetry run my_script.py`: for any python script
+- `poetry run python my_script.py`: for any python script
 - `poetry run sto my_command`: for any command registered in `stochastic_optimization/__main__.py`
 
 
