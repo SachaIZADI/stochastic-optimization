@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "stochastic-optimization"
+version = "0.0.b0"
+description = ""
+authors = ["Sacha Izadi <sacha.izadi@polytechnique.org>"]
+
+[tool.poetry.scripts]
+sto = 'stochastic_optimization.__main__:cli'
+
+[tool.poetry.dependencies]
+python = ">=3.10.0,<3.11"
+numpy = "^1.23.1"
+scipy = "^1.9.0"
+pandas = "^1.4.3"
+matplotlib = "^3.5.2"
+python-dotenv = "^0.20.0"
+click = "^8.1.3"
+pre-commit = "^2.20.0"
+gurobipy = "^9.5.2"
