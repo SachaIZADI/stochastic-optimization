@@ -36,9 +36,7 @@ You can run any python script locally with
 
 ### pre-commit hooks
 
-[pre-commit](https://pre-commit.com/) is used to manage git hooks.
-
-You need to install the hooks into your local repo:
+[pre-commit](https://pre-commit.com/) is used to manage git hooks. You need to install the hooks into your local repo:
 
 ```shell
 poetry run pre-commit install
@@ -60,7 +58,7 @@ TODO:
 - [ ] Implement exercices Saclay
 
 
-## Some references (and personal notes on the reading)
+## Some references (and personal reading notes)
 
 ### [Solving Simple Stochastic Optimization Problems with Gurobi](https://www.youtube.com/watch?v=Jb4a8T5qyVQ)
 
