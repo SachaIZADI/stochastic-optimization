@@ -54,8 +54,9 @@ If you're willing to fork this project and play with larger problem instances yo
 
 TODO:
 - [ ] Implement several versions of newsvendor
+    - [ ] Exact formula
     - [ ] Multiple objectives:
-        - [ ] CVaR
+        - [x] CVaR
         - [ ] VaR
         - [x] mean
         - [ ] sum of several.

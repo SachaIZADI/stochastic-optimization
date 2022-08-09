@@ -47,17 +47,18 @@ def max_expected_profit_analytic_solution(
     return demand.rv.ppf((unit_sales_price - unit_cost) / unit_sales_price)
 
 
-def max_expected_profit_lp_solution(
+def max_expected_profit_solution(
     demand: Demand,
     unit_cost: float,
     unit_sales_price: float,
 ) -> float:
     """
-    Solves the news vendor problem using stochastic linear programming - with max E[profits] objective
-    E[profits] = ∑ proba[Ω] * profits[Ω]
+    Solves the news vendor problem using stochastic linear programming 
+    with max E[profits] objective: E[profits] = ∑ proba[Ω] * profits[Ω]
     """
 
     model = gp.Model("news_vendor_expectation")
+
     order = model.addVar(lb=0, name="order")
     sales = model.addVars(demand.values, lb=0, ub=max(demand.values), name="sales")
 
@@ -77,6 +78,120 @@ def max_expected_profit_lp_solution(
     return order.X
 
 
+def min_conditional_value_at_risk_solution(
+    demand: Demand,
+    unit_cost: float,
+    unit_sales_price: float,
+    alpha: float,
+) -> float:
+    """
+    Solves the news vendor problem using stochastic linear programming 
+    with min CVaR_a[loss] objective. 
+    We use the following trick to compute CVaR: CVaR_a[loss[Ω]] = min t + E[|loss[Ω] - t|+] / (1 - a)
+    """
+
+    #FIXME: it doesn't seem to solve for all values of alpha. To be investigated…
+
+    model = gp.Model("news_vendor_CVaR")
+
+    order = model.addVar(lb=0, name="order")
+    sales = model.addVars(demand.values, lb=0, ub=max(demand.values), name="sales")
+
+    t = model.addVar(lb=-GRB.INFINITY, name="t")
+    excess = model.addVars(demand.values, lb=0, name="excess")  # excess := |loss[Ω] - t|+
+    profit = model.addVars(demand.values, name="profit", lb=-GRB.INFINITY)  # profit := -loss
+
+    model.addConstrs(order - sales[d] >= 0 for d in demand.values)
+    model.addConstrs(sales[d] <= d for d in demand.values)
+    model.addConstrs(
+        profit[d] == sales[d] * unit_sales_price - order * unit_cost
+        for d in demand.values
+    )
+
+    model.addConstrs(excess[d] >= -profit[d] - t for d in demand.values)
+
+    model.setObjective(
+        gp.quicksum(t + (excess[d] / (1 - alpha)) * demand.rv.pmf(d) for d in demand.values),
+        GRB.MINIMIZE,
+    )
+
+    model.optimize()
+
+    return order.X
+
+
+def min_value_at_risk_solution(
+    demand: Demand,
+    unit_cost: float,
+    unit_sales_price: float,
+    alpha: float,
+) -> float:
+    """
+    Solves the news vendor problem using stochastic linear programming 
+    with min VaR_a[loss] objective. 
+    We need to introduce binary variables (therefore the problem becomes a MIP) in order 
+    to compute quantiles. The formulation is quite poor as it relies on large big-M tricks.
+    This seems coherent with the remark from https://www.youtube.com/watch?v=Jb4a8T5qyVQ 
+    > "it becomes a "bad" MIP, need to track every-scenario"
+    """
+
+    #FIXME: it doesn't seem to solve for all values of alpha. To be investigated…
+
+    model = gp.Model("news_vendor_VaR")
+
+    order = model.addVar(lb=0, name="order")
+    sales = model.addVars(demand.values, lb=0, ub=max(demand.values), name="sales")
+    value_at_risk = model.addVar(name="value_at_risk", lb=-1e6, ub=1e6)
+    risk = model.addVars(demand.values, name="risk", lb=-1e6, ub=1e6)  # risk := loss
+    # bin_value_at_risk[d] := 1 if value_at_risk >= risk[d], else 0
+    bin_value_at_risk = model.addVars(
+        demand.values, vtype=GRB.BINARY, name="bin_value_at_risk"
+    )
+
+
+    model.addConstrs(order - sales[d] >= 0 for d in demand.values)
+    model.addConstrs(sales[d] <= d for d in demand.values)
+
+    model.addConstrs(
+        risk[d] == order * unit_cost - sales[d] * unit_sales_price
+        for d in demand.values
+    )
+
+    # We use a big-M trick here to linearize the constraint `bin_value_at_risk[d] := 1 if value_at_risk >= risk[d], else 0`
+    # L * (1 - bin_value_at_risk[d]) <= value_at_risk - risk[d] <= U * count_value_at_risk[d]
+    # where L and U are lower and upper bounds for `value_at_risk - risk[d]`
+    # TODO: remove hardcoded variables
+    L, U = -1e6, +1e6
+    model.addConstrs(
+        L * (1 - bin_value_at_risk[d]) <= value_at_risk - risk[d]
+        for d in demand.values
+    )
+    model.addConstrs(
+        value_at_risk - risk[d] <= U * (bin_value_at_risk[d]) for d in demand.values
+    )
+
+    # We have VaR_a[X] := min { v | P(X ≤ v) = 1 - a } (with X being the value at risk - or the loss here)
+    # Some maths here
+    # TODO: write the logic
+    # P(X ≤ v) = ∑_{x ≤ v} P(X=x) 
+    # = E[ indicator{X ≤ v} ] =
+    # To introduce this constraint we have 
+    model.addConstr(
+        gp.quicksum(bin_value_at_risk[d] * demand.rv.pmf(d) for d in demand.values) <= 1 - alpha
+    )
+    # TODO: remove the hardcoded slack variable -0.1
+    model.addConstr(
+        gp.quicksum(bin_value_at_risk[d] * demand.rv.pmf(d) for d in demand.values)
+        >= 1 - alpha - 0.1 
+    )
+
+    model.setObjective(value_at_risk, GRB.MINIMIZE)
+
+    model.optimize()
+
+    return order.X
+
+
 def main() -> None:
 
     N = 500
@@ -89,9 +204,6 @@ def main() -> None:
     probabilities = [(d, demand.pmf(d)) for d in demand_values]
     samples = demand.rvs(SAMPLE_SIZE)
 
-    unit_cost = 1
-    unit_sales_price = 2
-
     if PLOT:
         plt.hist(samples, SAMPLE_SIZE, density=True)
         plt.hist(
@@ -104,98 +216,6 @@ def main() -> None:
         )
         plt.plot([p[0] for p in probabilities], [p[1] for p in probabilities])
         plt.show()
-
-    model = gp.Model("news_vendor")
-
-    order = model.addVar(lb=0, name="order")
-    sales = model.addVars(demand_values, lb=0, ub=max(demand_values), name="sales")
-
-    # Maximize expected profit
-    model.setObjective(
-        gp.quicksum(
-            (sales[d] * unit_sales_price - order * unit_cost) * demand.pmf(d)
-            for d in demand_values
-        ),
-        GRB.MAXIMIZE,
-    )
-
-    # Minimize CVaR-75%
-    # CVaR_a[Ω] = min t + E[|Ω-t|+] / (1 - a)
-
-    model.addConstrs(order - sales[d] >= 0 for d in demand_values)
-    model.addConstrs(sales[d] <= d for d in demand_values)
-
-    # Optimize model
-    model.optimize()
-
-    for v in model.getVars():
-        print("%s %g" % (v.VarName, v.X))
-
-    print("Obj: %g" % model.ObjVal)
-
-
-def main_bis() -> None:
-
-    N = 10
-    P = 0.5
-    SAMPLE_SIZE = 100
-    PLOT = False
-
-    demand = binom(N, P)
-    demand_values = [*range(N + 1)]
-    probabilities = [(d, demand.pmf(d)) for d in demand_values]
-    samples = demand.rvs(SAMPLE_SIZE)
-
-    unit_cost = 1
-    unit_sales_price = 2
-
-    if PLOT:
-        plt.hist(samples, SAMPLE_SIZE, density=True)
-        plt.hist(
-            samples,
-            SAMPLE_SIZE,
-            density=True,
-            histtype="step",
-            cumulative=True,
-            label="Empirical",
-        )
-        plt.plot([p[0] for p in probabilities], [p[1] for p in probabilities])
-        plt.show()
-
-    model = gp.Model("news_vendor")
-
-    order = model.addVar(lb=0, name="order")
-    sales = model.addVars(demand_values, lb=0, ub=max(demand_values), name="sales")
-
-    # Minimize CVaR-75%
-    # CVaR_a[Ω] = min t + E[|-Ω-t|+] / (1 - a)
-    a = 0.95
-
-    t = model.addVar(lb=-1e6, name="t")
-    excess = model.addVars(demand_values, lb=0, name="excess")
-    profit = model.addVars(demand_values, name="profit", lb=-1e6)
-
-    model.addConstrs(order - sales[d] >= 0 for d in demand_values)
-    model.addConstrs(sales[d] <= d for d in demand_values)
-    model.addConstrs(
-        profit[d] == sales[d] * unit_sales_price - order * unit_cost
-        for d in demand_values
-    )
-
-    model.addConstrs(excess[d] >= -profit[d] - t for d in demand_values)
-
-    model.setObjective(
-        gp.quicksum(t + (excess[d] / (1 - a)) * demand.pmf(d) for d in demand_values),
-        GRB.MINIMIZE,
-    )
-
-    # Optimize model
-    model.optimize()
-
-    for v in model.getVars():
-        print("%s %g" % (v.VarName, v.X))
-
-    print("Obj: %g" % model.ObjVal)
 
 
 def main_ter():
@@ -285,12 +305,25 @@ if __name__ == "__main__":
     unit_cost = 1
     unit_sales_price = 2
 
+    print("============================")
     analytics_solution = max_expected_profit_analytic_solution(
         demand, unit_cost, unit_sales_price
     )
     print(analytics_solution)
 
-    expectation_solution = max_expected_profit_lp_solution(
+    print("============================")
+    expectation_solution = max_expected_profit_solution(
         demand, unit_cost, unit_sales_price
     )
     print(expectation_solution)
+
+    for alpha in (0.5, 0.75, 0.85, 0.95):
+        try:
+            print("============================")
+            cvar_solution = min_conditional_value_at_risk_solution(
+                demand, unit_cost, unit_sales_price, alpha
+            )
+            print(cvar_solution)
+        except:
+            ...
+        
