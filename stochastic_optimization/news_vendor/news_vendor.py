@@ -1,10 +1,80 @@
 # -*- coding: utf-8 -*-
 import math
+from functools import cached_property
+from logging import getLogger
+from typing import List
 
 import gurobipy as gp
 import matplotlib.pyplot as plt
+import scipy
 from gurobipy import GRB
 from scipy.stats import binom
+
+logger = getLogger(__name__)
+
+"""
+Several implementations of the news vendor problem.
+---------
+In this problem, a paperboy has to buy N newspapers at cost C that he will sell the next day at price P.
+The next-day demand for newspapers is random, and the paperboy needs to carefully build his inventory so
+as to maximize his profits while hedging against loss
+"""
+
+
+class Demand:
+
+    EPS = 1e-10
+
+    def __init__(self, rv: scipy.stats.rv_discrete) -> None:
+        self.rv = rv
+
+    @cached_property
+    def values(self) -> List[int]:
+        _min = self.rv.ppf(self.EPS)
+        _max = self.rv.ppf(1 - self.EPS)
+        return [*range(math.floor(_min), math.ceil(_max) + 1)]
+
+
+def max_expected_profit_analytic_solution(
+    demand: Demand,
+    unit_cost: float,
+    unit_sales_price: float,
+) -> float:
+    """
+    Analytically computes the solution (number of orders) of the news vendor problem - with max E[profit] objective
+    order* = F^(-1)[(p - c) / p]
+    """
+    return demand.rv.ppf((unit_sales_price - unit_cost) / unit_sales_price)
+
+
+def max_expected_profit_lp_solution(
+    demand: Demand,
+    unit_cost: float,
+    unit_sales_price: float,
+) -> float:
+    """
+    Solves the news vendor problem using stochastic linear programming - with max E[profits] objective
+    E[profits] = ∑ proba[Ω] * profits[Ω]
+    """
+
+    model = gp.Model("news_vendor_expectation")
+    order = model.addVar(lb=0, name="order")
+    sales = model.addVars(demand.values, lb=0, ub=max(demand.values), name="sales")
+
+    model.addConstrs(order - sales[d] >= 0 for d in demand.values)
+    model.addConstrs(sales[d] <= d for d in demand.values)
+
+    model.setObjective(
+        gp.quicksum(
+            (sales[d] * unit_sales_price - order * unit_cost) * demand.rv.pmf(d)
+            for d in demand.values
+        ),
+        GRB.MAXIMIZE,
+    )
+
+    model.optimize()
+
+    return order.X
 
 
 def main() -> None:
@@ -206,4 +276,21 @@ def main_ter():
 if __name__ == "__main__":
     # main()
     # main_bis()
-    main_ter()
+    # main_ter()
+
+    N = 10
+    P = 0.5
+    demand = Demand(scipy.stats.binom(N, P))
+
+    unit_cost = 1
+    unit_sales_price = 2
+
+    analytics_solution = max_expected_profit_analytic_solution(
+        demand, unit_cost, unit_sales_price
+    )
+    print(analytics_solution)
+
+    expectation_solution = max_expected_profit_lp_solution(
+        demand, unit_cost, unit_sales_price
+    )
+    print(expectation_solution)
