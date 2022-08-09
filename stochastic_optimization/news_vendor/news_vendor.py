@@ -142,32 +142,19 @@ def main_ter():
     unit_cost = 1
     unit_sales_price = 2
 
-    if PLOT:
-        plt.hist(samples, SAMPLE_SIZE, density=True)
-        plt.hist(
-            samples,
-            SAMPLE_SIZE,
-            density=True,
-            histtype="step",
-            cumulative=True,
-            label="Empirical",
-        )
-        plt.plot([p[0] for p in probabilities], [p[1] for p in probabilities])
-        plt.show()
-
     model = gp.Model("news_vendor")
 
     order = model.addVar(lb=0, name="order")
     sales = model.addVars(demand_values, lb=0, ub=max(demand_values), name="sales")
-    value_at_risk = model.addVar(name="value_at_risk")
-    risk = model.addVars(demand_values, name="risk")
+    value_at_risk = model.addVar(name="value_at_risk", lb=-1e6, ub=1e6)
+    risk = model.addVars(demand_values, name="risk", lb=-1e6, ub=1e6)
     # count_value_at_risk[d] = 1 if value_at_risk >= risk[d] , else 0
     count_value_at_risk = model.addVars(
         demand_values, vtype=GRB.BINARY, name="count_value_at_risk"
     )
 
     # Minimize VaR-75%
-    p = 0.85
+    p = 0.15
 
     model.addConstrs(order - sales[d] >= 0 for d in demand_values)
     model.addConstrs(sales[d] <= d for d in demand_values)
@@ -188,9 +175,9 @@ def main_ter():
     model.addConstrs(
         value_at_risk - risk[d] <= U * (count_value_at_risk[d]) for d in demand_values
     )
-    model.addConstrs(
-        count_value_at_risk[d] >= count_value_at_risk[d + 1] for d in [*range(N)]
-    )
+    # model.addConstrs(
+    #     count_value_at_risk[d] >= count_value_at_risk[d + 1] for d in [*range(N)]
+    # )
 
     model.addConstr(
         gp.quicksum(count_value_at_risk[d] * demand.pmf(d) for d in demand_values) <= p
@@ -198,7 +185,7 @@ def main_ter():
 
     model.addConstr(
         gp.quicksum(count_value_at_risk[d] * demand.pmf(d) for d in demand_values)
-        >= p - 0.3
+        >= p - 0.1
     )
 
     model.setObjective(
