@@ -14,7 +14,7 @@ from logging import getLogger
 from typing import List
 
 import gurobipy as gp
-import matplotlib.pyplot as plt
+import numpy as np
 import scipy
 from gurobipy import GRB
 from scipy.stats import binom
@@ -26,14 +26,18 @@ class Demand:
 
     EPS = 1e-10
 
-    def __init__(self, rv: scipy.stats.rv_discrete) -> None:
+    def __init__(self, rv: scipy.stats.rv_discrete, seed: int = 42) -> None:
         self.rv = rv
+        self.rv.random_state = np.random.RandomState(seed=seed)
 
     @cached_property
     def values(self) -> List[int]:
         _min = self.rv.ppf(self.EPS)
         _max = self.rv.ppf(1 - self.EPS)
         return [*range(math.floor(_min), math.ceil(_max) + 1)]
+
+    def samples(self, sample_size: int) -> np.ndarray:
+        return self.rv.rvs(sample_size)
 
 
 def max_expected_profit_analytic_solution(
@@ -189,32 +193,6 @@ def min_value_at_risk_solution(
     model.optimize()
 
     return order.X
-
-
-def main() -> None:
-
-    N = 500
-    P = 0.5
-    SAMPLE_SIZE = 100
-    PLOT = True
-
-    demand = binom(N, P)
-    demand_values = [*range(N + 1)]
-    probabilities = [(d, demand.pmf(d)) for d in demand_values]
-    samples = demand.rvs(SAMPLE_SIZE)
-
-    if PLOT:
-        plt.hist(samples, SAMPLE_SIZE, density=True)
-        plt.hist(
-            samples,
-            SAMPLE_SIZE,
-            density=True,
-            histtype="step",
-            cumulative=True,
-            label="Empirical",
-        )
-        plt.plot([p[0] for p in probabilities], [p[1] for p in probabilities])
-        plt.show()
 
 
 if __name__ == "__main__":
