@@ -5,7 +5,7 @@ Several implementations of the news vendor problem.
 ---------
 In this problem, a paperboy has to buy N newspapers at cost C that he will sell the next day at price P.
 The next-day demand for newspapers is random, and the paperboy needs to carefully build his inventory so
-as to maximize his profits while hedging against loss
+as to maximize his profits while hedging against loss.
 """
 
 import math
@@ -91,8 +91,6 @@ def min_conditional_value_at_risk_solution(
     We use the following trick to compute CVaR: CVaR_a[loss[D]] = min t + E[|loss[D] - t|+] / (1 - a)
     """
 
-    # FIXME: it doesn't seem to solve for all values of alpha. To be investigated…
-
     model = gp.Model("news_vendor_CVaR")
 
     order = model.addVar(lb=0, name="order")
@@ -100,13 +98,9 @@ def min_conditional_value_at_risk_solution(
 
     t = model.addVar(lb=-GRB.INFINITY, name="t")
     # excess := |loss[Ω] - t|+
-    excess = model.addVars(
-        demand.values, lb=0, name="excess"
-    )
+    excess = model.addVars(demand.values, lb=0, name="excess")
     # profit := -loss
-    profit = model.addVars(
-        demand.values, name="profit", lb=-GRB.INFINITY
-    )
+    profit = model.addVars(demand.values, lb=-GRB.INFINITY, name="profit")
 
     model.addConstrs(order - sales[d] >= 0 for d in demand.values)
     model.addConstrs(sales[d] <= d for d in demand.values)
@@ -117,12 +111,14 @@ def min_conditional_value_at_risk_solution(
 
     model.addConstrs(excess[d] >= -profit[d] - t for d in demand.values)
 
+    # fmt: off
     model.setObjective(
-        gp.quicksum(
-            t + (excess[d] / (1 - alpha)) * demand.rv.pmf(d) for d in demand.values
+        t + gp.quicksum(
+            (excess[d] / (1 - alpha)) * demand.rv.pmf(d) for d in demand.values
         ),
         GRB.MINIMIZE,
     )
+    # fmt: on
 
     model.optimize()
 
@@ -144,13 +140,10 @@ def min_value_at_risk_solution(
     > "it becomes a "bad" MIP, need to track every-scenario"
 
     To compute the VaR we use the following trick:
-    > VaR_a[L[D]] := min { v | P(L[D] ≤ v) ≥ 1 - a } (with L[D] being the loss, that depends on the demand r.v.)
+    > VaR_a[L[D]] := min { v | P(L[D] ≤ v) ≥ a } (with L[D] being the loss, that depends on the demand r.v.)
     > We have P(L[D] ≤ v) = E[ indicator(L[D] ≤ v) ] = ∑_{d} P(D=d) * indicator(L[d] ≤ v)
     > The role of the introduced binary variables is to compute is_risk_lower_than_VaR[d] := indicator(L[d] ≤ VaR)
-
     """
-
-    # FIXME: it doesn't seem to solve for all values of alpha. To be investigated…
 
     model = gp.Model("news_vendor_VaR")
 
@@ -188,7 +181,7 @@ def min_value_at_risk_solution(
     # VaR definition as a 1-alpha quantile
     model.addConstr(
         gp.quicksum(is_risk_lower_than_VaR[d] * demand.rv.pmf(d) for d in demand.values)
-        >= 1 - alpha
+        >= alpha
     )
 
     model.setObjective(value_at_risk, GRB.MINIMIZE)
@@ -248,7 +241,7 @@ if __name__ == "__main__":
     print(expectation_solution)
 
     print("============================")
-    for alpha in (0.5, 0.25, 0.15, 0.05, 0.01):
+    for alpha in (0.99, 0.95, 0.85, 0.75, 0.5, 0.25, 0.15, 0.05, 0.01):
         try:
             cvar_solution = min_conditional_value_at_risk_solution(
                 demand,
