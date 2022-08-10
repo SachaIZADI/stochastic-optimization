@@ -17,7 +17,6 @@ import gurobipy as gp
 import numpy as np
 import scipy
 from gurobipy import GRB
-from scipy.stats import binom
 
 logger = getLogger(__name__)
 
@@ -193,52 +192,3 @@ def min_value_at_risk_solution(
     model.optimize()
 
     return order.X
-
-
-if __name__ == "__main__":
-
-    N = 10
-    P = 0.5
-    demand = Demand(scipy.stats.binom(N, P))
-
-    unit_cost = 1
-    unit_sales_price = 2
-
-    print("============================")
-    analytics_solution = max_expected_profit_analytic_solution(
-        demand, unit_cost, unit_sales_price
-    )
-    print("analytics:")
-    print(analytics_solution)
-
-    print("============================")
-    expectation_solution = max_expected_profit_solution(
-        demand, unit_cost, unit_sales_price
-    )
-    print("max expected profits")
-    print(expectation_solution)
-
-    print("============================")
-    for alpha in (0.99, 0.95, 0.85, 0.75, 0.5, 0.25, 0.15, 0.05, 0.01):
-        try:
-            cvar_solution = min_conditional_value_at_risk_solution(
-                demand,
-                unit_cost,
-                unit_sales_price,
-                alpha,
-            )
-            print(f"min CVaR {alpha}")
-            print(cvar_solution)
-        except:  # pylint: disable=bare-except
-            ...
-
-    print("============================")
-    for alpha in (0.99, 0.95, 0.5, 0.25, 0.15, 0.05, 0.01):
-        var_solution = min_value_at_risk_solution(
-            demand,
-            unit_cost,
-            unit_sales_price,
-            alpha,
-        )
-        print(f"min VaR {alpha}")
-        print(var_solution)

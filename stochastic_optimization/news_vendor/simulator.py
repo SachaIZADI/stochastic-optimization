@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import binom
 
-from stochastic_optimization.news_vendor.news_vendor import Demand
+from stochastic_optimization.news_vendor.optimizer import Demand
 
 logger = getLogger(__name__)
 
@@ -52,26 +52,3 @@ def plot_distribution(samples: Iterable[float], title: Optional[str] = None) -> 
         plt.title(title)
 
     plt.show()
-
-
-if __name__ == "__main__":
-
-    N = 10
-    P = 0.5
-    sample_size = 10000
-
-    demand = Demand(binom(N, P))
-    samples = demand.samples(sample_size)
-    plot_distribution(samples, "Demand")
-
-    unit_cost = 1
-    unit_sales_price = 2
-
-    profits = simulate_profits(
-        demand=demand,
-        unit_cost=unit_cost,
-        unit_sales_price=unit_sales_price,
-        order=5,
-        sample_size=sample_size,
-    )
-    plot_distribution(profits, "Profit")
