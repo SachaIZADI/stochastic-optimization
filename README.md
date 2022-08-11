@@ -124,22 +124,41 @@ poetry run sto news-vendor \
    --mu 100
 ```
 
-TODO : write some qualitative analysis
-
+The distribution for demand is the following with a "large" spread between 70 & 140 units:
 ![Alt text](media/news_vendor/poisson_demand.png)
 
+The overall idea behind stochastic optimization is how to be able to shift distribution of your economic objective: What is the maximum profit you will get? How likely are bad (and very bad) events to happen? etc.
+
+##### Maximizing expected profit
+Good sanity check: the LP implementation and the analytic solution to the problem yield to the same results and same distribution of profits.
 ![Alt text](media/news_vendor/expected_profit_analytic.png)
 ![Alt text](media/news_vendor/expected_profit_lp.png)
 
+##### Minimizing VaR-a
+**⚠️ Results do not seem consistent: implementation to be investigated**
+VaR-0.75
 ![Alt text](media/news_vendor/VaR75.png)
+
+VaR-0.85
 ![Alt text](media/news_vendor/VaR85.png)
+
+VaR-0.95
 ![Alt text](media/news_vendor/VaR95.png)
 
-![Alt text](media/news_vendor/CVaR75.png)
+##### Minimizing CVaR-a
+We see that minimizing CVaR tends to collapse the profits (and losses) distribution into a smaller spread: we hedge against very bad outcomes, at the price of reducing the economic profit in case of very good events (i.e. high volume of next-day demand).
+
+- CVaR-0.85
+
 ![Alt text](media/news_vendor/CVaR85.png)
+
+- CVaR-0.95
+
 ![Alt text](media/news_vendor/CVaR95.png)
 
+- Expected profit (for comparison)
 
+![Alt text](media/news_vendor/expected_profit_analytic.png)
 
 
 ## Some references (and personal reading notes)
