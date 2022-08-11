@@ -58,13 +58,14 @@ poetry run sto --help
 ```
 
 TODO:
+- [ ] Results discussion
 - [ ] Implement exercices Saclay?
 - [ ] Robust backpack?
 
 ### News vendor
 
 #### How to run the code
-I implemented several versions of the news vendor problem with different objectives / resolution methods:
+We implemented several versions of the news vendor problem with different objectives / resolution methods:
 - `max E[profits]` with analytical resolution
 - `max E[profits]` with LP resolution
 - `min VaR_a[-profits]` with LP resolution
@@ -109,6 +110,36 @@ poetry run sto news-vendor \
    --n 10 \
    --p 0.5
 ```
+
+#### Results & discussion
+We will play around a low-margin example (where buying cost = 1€ and sales price = 1.1€), and with a `Poisson(mu=100)` random variable.
+
+```shell
+poetry run sto news-vendor \
+   --problem-instance <several-problems>\
+   --alpha <several-alphas>\
+   --demand-distribution poisson \
+   --unit-cost 1.0 \
+   --unit-sales-price 1.1 \
+   --mu 100
+```
+
+TODO : write some qualitative analysis
+
+![Alt text](media/news_vendor/poisson_demand.png)
+
+![Alt text](media/news_vendor/expected_profit_analytic.png)
+![Alt text](media/news_vendor/expected_profit_lp.png)
+
+![Alt text](media/news_vendor/VaR75.png)
+![Alt text](media/news_vendor/VaR85.png)
+![Alt text](media/news_vendor/VaR95.png)
+
+![Alt text](media/news_vendor/CVaR75.png)
+![Alt text](media/news_vendor/CVaR85.png)
+![Alt text](media/news_vendor/CVaR95.png)
+
+
 
 
 ## Some references (and personal reading notes)

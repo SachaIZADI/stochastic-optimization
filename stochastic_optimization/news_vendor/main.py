@@ -6,6 +6,7 @@ get a solution and plot the profits distribution to visualize if you're hedging 
 from enum import Enum
 from typing import List, Optional
 
+import numpy as np
 import scipy
 
 from stochastic_optimization.news_vendor.optimizer import (
@@ -52,6 +53,10 @@ class ProblemInstance(Enum):
 
         raise NotImplementedError()
 
+    @property
+    def is_alpha_expected(self) -> bool:
+        return self in [self.VaR, self.CVaR]
+
 
 def solve(
     problem: ProblemInstance,
@@ -69,8 +74,8 @@ def solve(
     )
 
     kwargs = {}
-    if alpha is not None:
-        kwargs["alpha"] = alpha
+    if problem.is_alpha_expected:
+        kwargs["alpha"] = alpha if alpha is not None else 0.75
 
     order = problem.solve(demand, unit_cost, unit_sales_price, **kwargs)
 
@@ -85,5 +90,9 @@ def solve(
     plot_distribution(
         profits,
         title=f"Profits - {problem.name}",
-        outstanding_points=[("Null profit", 0)],
+        outstanding_points=[
+            ("Null profit", 0),
+            ("Expected profit", np.mean(profits)),
+            ("Min profit", np.min(profits)),
+        ],
     )

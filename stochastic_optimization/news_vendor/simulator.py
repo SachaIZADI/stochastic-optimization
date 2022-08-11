@@ -2,6 +2,7 @@
 from logging import getLogger
 from typing import Iterable, Optional, Tuple
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -51,12 +52,14 @@ def plot_distribution(
     if title:
         plt.title(title)
 
-    for outstanding_point in outstanding_points:
+    colors = matplotlib.cm.cool(np.linspace(0, 1, len(outstanding_points)))
+    for i, outstanding_point in enumerate(outstanding_points):
         ax2.vlines(
             x=outstanding_point[1],
             ymin=0,
             ymax=1,
             label=outstanding_point[0],
+            color=colors[i],
         )
 
     h1, l1 = ax1.get_legend_handles_labels()
