@@ -4,21 +4,30 @@ Main entrypoint to the news vendor problem implementation. Use this script to ru
 get a solution and plot the profits distribution to visualize if you're hedging against risk.
 """
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 import scipy
 
 from stochastic_optimization.news_vendor.optimizer import (
-    Demand, 
+    Demand,
     max_expected_profit_analytic_solution,
-    max_expected_profit_solution, 
+    max_expected_profit_solution,
     min_conditional_value_at_risk_solution,
-    min_value_at_risk_solution
+    min_value_at_risk_solution,
 )
 from stochastic_optimization.news_vendor.simulator import (
     plot_distribution,
-    simulate_profits
+    simulate_profits,
 )
+
+
+def get_scipy_discrete_distributions() -> List[str]:
+    """Returns the list of scipy discrete distributions supported by the model"""
+    discrete_distributions: List[str] = []
+    for distribution_name in dir(scipy.stats):
+        if isinstance(getattr(scipy.stats, distribution_name), scipy.stats.rv_discrete):
+            discrete_distributions.append(distribution_name)
+    return discrete_distributions
 
 
 class ProblemInstance(Enum):
@@ -28,7 +37,7 @@ class ProblemInstance(Enum):
     CVaR = "CVaR"
 
     @property
-    def solver(self) -> "function":
+    def solve(self) -> "function":
         if self == self.expected_profit_analytic:
             return max_expected_profit_analytic_solution
 
@@ -53,13 +62,17 @@ def solve(
     sample_size: int = 1000,
 ) -> None:
 
-    plot_distribution(demand.samples(sample_size), title="Demand")
+    plot_distribution(
+        demand.samples(sample_size),
+        title="Demand",
+        outstanding_points=[("Average demand", demand.rv.mean())],
+    )
 
     kwargs = {}
     if alpha is not None:
         kwargs["alpha"] = alpha
 
-    order = problem.solver(demand, unit_cost, unit_sales_price, **kwargs)
+    order = problem.solve(demand, unit_cost, unit_sales_price, **kwargs)
 
     profits = simulate_profits(
         demand,
@@ -69,28 +82,8 @@ def solve(
         sample_size,
     )
 
-    plot_distribution(profits, title="Profits")
-
-
-if __name__ == "__main__":
-    problem = ProblemInstance("CVaR")
-
-    N = 10
-    P = 0.5
-    sample_size = 10000
-
-    unit_cost = 1
-    unit_sales_price = 2
-
-    alpha = 0.85
-
-    demand = Demand(scipy.stats.binom(N, P))
-
-    solve(
-        problem,
-        demand,
-        unit_cost,
-        unit_sales_price,
-        alpha,
-        sample_size,
+    plot_distribution(
+        profits,
+        title=f"Profits - {problem.name}",
+        outstanding_points=[("Null profit", 0)],
     )

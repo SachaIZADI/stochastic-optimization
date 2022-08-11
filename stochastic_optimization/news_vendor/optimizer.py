@@ -23,7 +23,7 @@ logger = getLogger(__name__)
 
 class Demand:
 
-    EPS = 1e-10
+    EPS = 1e-6
 
     def __init__(self, rv: scipy.stats.rv_discrete, seed: int = 42) -> None:
         self.rv = rv

@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 from logging import getLogger
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import binom
 
 from stochastic_optimization.news_vendor.optimizer import Demand
 
@@ -27,7 +26,11 @@ def simulate_profits(
     return profits
 
 
-def plot_distribution(samples: Iterable[float], title: Optional[str] = None) -> None:
+def plot_distribution(
+    samples: Iterable[float],
+    title: Optional[str] = None,
+    outstanding_points: Iterable[Tuple[str, float]] = (),
+) -> None:
     """
     Helper function to plot the distribution and cumulative distribution of a series of samples
     from a random variable
@@ -45,10 +48,19 @@ def plot_distribution(samples: Iterable[float], title: Optional[str] = None) -> 
         color="darkred",
     )
 
-    ax1.legend(loc="upper left")
-    ax2.legend(loc="upper right")
-
     if title:
         plt.title(title)
+
+    for outstanding_point in outstanding_points:
+        ax2.vlines(
+            x=outstanding_point[1],
+            ymin=0,
+            ymax=1,
+            label=outstanding_point[0],
+        )
+
+    h1, l1 = ax1.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax1.legend(h1 + h2, l1 + l2, loc=2)
 
     plt.show()

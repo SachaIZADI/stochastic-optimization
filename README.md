@@ -52,17 +52,63 @@ If you're willing to fork this project and play with larger problem instances yo
 
 ## How to use the project
 
+You can use the cli to run the code:
+```shell
+poetry run sto --help
+```
+
 TODO:
-- [ ] Implement several versions of newsvendor
-    - [ ] Exact formula
-    - [ ] Multiple objectives:
-        - [x] CVaR
-        - [ ] VaR
-        - [x] mean
-        - [ ] sum of several.
-    - [ ] Build simulator to compute metrics
-    - [ ] Refactor code
-- [ ] Implement exercices Saclay
+- [ ] Implement exercices Saclay?
+- [ ] Robust backpack?
+
+### News vendor
+
+#### How to run the code
+I implemented several versions of the news vendor problem with different objectives / resolution methods:
+- `max E[profits]` with analytical resolution
+- `max E[profits]` with LP resolution
+- `min VaR_a[-profits]` with LP resolution
+- `min CVaR_a[-profits]` with LP resolution
+
+The code is available under `stochastic_optimization/news_vendor/…`
+
+You can run the following command to launch the news vendor problem
+```shell
+❯ poetry run sto news-vendor --help
+
+Usage: sto news-vendor [OPTIONS]
+
+Options:
+  --problem-instance [expected_profit_analytic|expected_profit_lp|VaR|CVaR]
+                                  NewsVendor problem instance to solve
+  --demand-distribution [bernoulli|betabinom|binom|boltzmann|dlaplace|geom|hypergeom|logser|nbinom|nchypergeom_fisher|nchypergeom_wallenius|nhypergeom|planck|poisson|randint|skellam|yulesimon|zipf|zipfian]
+                                  scipy.stats distribution to chose for the
+                                  demand - please make sure it has a limited
+                                  spread of values (to limit instance size).
+                                  You can pass distribution parameters as
+                                  additional (unchecked) options - see README
+                                  for examples
+  --unit-cost FLOAT               unit cost of a newspaper
+  --unit-sales-price FLOAT        unit sales price of a newspaper
+  --alpha FLOAT                   Percentile (between 0.0 and 1.0) used for
+                                  VaR and CVaR objectives
+  --sample-size INTEGER           Sample size for plotting the distribution
+                                  graphs
+  --help                          Show this message and exit.
+```
+
+All `scipy` [discrete probability distributions](https://docs.scipy.org/doc/scipy/tutorial/stats/discrete.html) are supported by the module (provided its spread is not too large because of the Gurobi free license issue). To specify the distribution parameters, just precise the options in the CLI call (variable names need to be coherent with `scipy`'s ones).
+
+For example to have `demand ~ binom(n=10, p=0.5)`
+```shell
+poetry run sto news-vendor \
+   --problem-instance expected_profit_lp \
+   --demand-distribution binom \
+   --unit-cost 1.0 \
+   --unit-sales-price 2.0 \
+   --n 10 \
+   --p 0.5
+```
 
 
 ## Some references (and personal reading notes)
