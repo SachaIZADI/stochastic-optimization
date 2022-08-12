@@ -10,6 +10,7 @@ from stochastic_optimization.news_vendor.main import (
     solve,
 )
 from stochastic_optimization.news_vendor.optimizer import Demand
+from stochastic_optimization.robust_knapsack.main import solve_robust_knapsack
 
 
 @click.group()
@@ -97,6 +98,21 @@ def cli_news_vendor(
         alpha=alpha,
         sample_size=sample_size,
     )
+
+
+@cli.command(
+    name="robust-knapsack",
+    short_help="Runs the robust knapsack problem",
+)
+@click.option(
+    "--uncertainty-budget",
+    type=int,
+    default=1,
+    help="Uncertainty budget to robust resolution",
+)
+def cli_robust_knapsack(uncertainty_budget: int) -> None:
+    # TODO: add parameter to define items
+    solve_robust_knapsack(items=[], uncertainty_budget=uncertainty_budget)
 
 
 if __name__ == "__main__":

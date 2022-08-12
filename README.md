@@ -58,8 +58,7 @@ poetry run sto --help
 ```
 
 TODO:
-- [ ] Results discussion
-- [ ] Implement exercices Saclay?
+- [ ] Reprendre VaR
 - [ ] Robust backpack?
 
 ### News vendor
