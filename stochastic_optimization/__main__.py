@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Dict
+from typing import Dict, List
 
 import click
 import scipy
@@ -10,7 +10,7 @@ from stochastic_optimization.news_vendor.main import (
     solve,
 )
 from stochastic_optimization.news_vendor.optimizer import Demand
-from stochastic_optimization.robust_knapsack.main import solve_robust_knapsack
+from stochastic_optimization.robust_knapsack.main import Item, solve_robust_knapsack
 
 
 @click.group()
@@ -105,14 +105,45 @@ def cli_news_vendor(
     short_help="Runs the robust knapsack problem",
 )
 @click.option(
+    "--item",
+    "-i",
+    type=str,
+    multiple=True,
+    default=["12, 3, 7", "6, 2, 3", "5, 2, 3", "5, 1, 2"],
+    help=(
+        "Items to be selected in the knapsack problem. Expected format is a string of floats "
+        "separated by a ',' with numbers in the following order: \"value, min_weight, max_weight\" "
+        'e.g. "12, 3, 7"'
+    ),
+)
+@click.option(
     "--uncertainty-budget",
     type=int,
     default=1,
     help="Uncertainty budget to robust resolution",
 )
-def cli_robust_knapsack(uncertainty_budget: int) -> None:
-    # TODO: add parameter to define items
-    solve_robust_knapsack(items=[], uncertainty_budget=uncertainty_budget)
+@click.option(
+    "--capacity",
+    type=int,
+    default=7,
+    help="Total capacity budget of the knapsack",
+)
+def cli_robust_knapsack(
+    item: List[str], uncertainty_budget: int, capacity: int
+) -> None:
+    items = [
+        Item(
+            value=float(_item.split(",")[0]),
+            min_weight=float(_item.split(",")[1]),
+            max_weight=float(_item.split(",")[2]),
+        )
+        for _item in item
+    ]
+    x, obj = solve_robust_knapsack(
+        items=items, uncertainty_budget=uncertainty_budget, capacity=capacity
+    )
+    print("Chosen items:", x)
+    print("Objective at optimality:", obj)
 
 
 if __name__ == "__main__":

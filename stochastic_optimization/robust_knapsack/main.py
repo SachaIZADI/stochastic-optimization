@@ -7,10 +7,10 @@ and get a solution.
 In this problem, we are constrained by a fixed-size knapsack and must fill it with the most valuable items.
 Each item has a cost that holds some uncertainty, price might vary depending on exogenous conditions.
 """
-
+import itertools
 from dataclasses import dataclass
 from logging import getLogger
-from typing import List
+from typing import List, Tuple
 
 import gurobipy as gp
 from gurobipy import GRB
@@ -21,95 +21,67 @@ logger = getLogger(__name__)
 @dataclass
 class Item:
     value: float
-    min_price: float
-    max_price: float
+    min_weight: float
+    max_weight: float
+
+    @property
+    def delta_weight(self) -> float:
+        return self.max_weight - self.min_weight
 
 
 def solve_robust_knapsack(
     items: List[Item], capacity: float, uncertainty_budget: int = 1
-) -> List[int]:
+) -> Tuple[List[int], float]:
     """
-    Solves the robust knapsack problem. Returns a list of integers corresponding
-    to the items indexes chosen.
+    Solves the robust knapsack problem. Returns a list of 1/0 corresponding to the  chosen items and the objective
+    value at optimality.
     ---------------------------------
-    The problem formulation is the following:
+    The problem pseudo-formulation is the following:
 
         maximize knapsack objective under the worst scenario (with uncertainty budget)
 
-        # FIXME: this is not the right formulation ...
+    We use the formulation of https://xiongpengnus.github.io/rsome/example_ro_knapsack
+        max ∑ value[i] * x[i]
+        st. • ∑_{i} (min_weight[i] + z[i] * delta_weight[i]) * x[i] ≤ capacity  for all z in Z={|z|_0 = robust_budget}
+            • [Not a constraint] : delta_weight[i] := max_weight[i] - min_weight[i]
 
-        max_{item choices} min_{worst case scenarios} (knapsack objective)
-        st. • ∑ worst case scenarios == uncertainty budget
-            • capacity constraint
+    To represent the "for all z in Z={|z|_0 = robust_budget}" we need to introduce new constraints and explictly define
+    the z's.
+    NOTE: This is not the most elegant solution as it requires to pre-compute many scenarios ahead of time and introduce
+    one constraint per scenario. There might be a smarter way of generating these scenarios on-the-fly (i.e. with a "good"
+    meta-heuristic, column generation, etc.)
 
-    We rewrite the max-min problem as
-
-       max t
-       s.t. • t ≤ knapsack objective for all item choices (for a given worst case scenario)
-            • ∑ worst case scenarios == uncertainty budget
-            • capacity constraint
-
+    New formulation:
+        max ∑ value[i] * x[i]
+        st. • ∑_{i} (min_weight[i] + Z[j, i] * delta_weight[i]) * x[i] ≤ capacity, for all j
+            • Z = { [ z[j,0], z[j,1], ...] | ∑z[•, i] = robust_budget}
+            • x binary
     """
 
     model = gp.Model("robust_knapsack")
 
-    is_worst_price = model.addVars(
-        [*range(len(items))], vtype=GRB.BINARY, name="is_worst_price"
-    )
-    is_item_selected = model.addVars(
-        [*range(len(items))], vtype=GRB.BINARY, name="is_item_selected"
-    )
-    t = model.addVar(lb=-GRB.INFINITY, name="t")
-    z = model.addVars([*range(len(items))], vtype=GRB.BINARY, name="z")
+    items_indexes = [*range(len(items))]
+    Z = [
+        [1 if i in combination else 0 for i in items_indexes]
+        for combination in itertools.combinations(items_indexes, uncertainty_budget)
+    ]
+    Z_indexes = [*range(len(Z))]
 
-    # ∑ worst case scenarios == uncertainty budget
-    model.addConstr(gp.quicksum(is_worst_price) == uncertainty_budget)
+    x = model.addVars(items_indexes, vtype=GRB.BINARY, name="x")
 
-    # Capacity constraint
-    #   We initially wrote it as:
-    #      ∑ is_item_selected * (is_worst_price * item.max_price + (1 - is_worst_price) * item.min_price ≤ capacity
-    #   Which turns into:
-    #       ∑ is_item_selected * is_worst_price * (item.max_price - item.min_price) + is_item_selected * item.min_price ≤ capacity
-    #   To linearize the constraint we introduce
-    #       z = is_item_selected * is_worst_price
-
-    model.addConstrs(z[i] <= is_item_selected[i] for i in range(len(items)))
-    model.addConstrs(z[i] <= is_worst_price[i] for i in range(len(items)))
     model.addConstrs(
-        z[i] >= is_item_selected[i] + is_worst_price[i] - 1 for i in range(len(items))
-    )
-    model.addConstr(
         gp.quicksum(
-            z[i] * (items[i].max_price - items[i].min_price)
-            + is_item_selected[i] * items[i].min_price
-            for i in range(len(items))
+            (items[i].min_weight + Z[j][i] * items[i].delta_weight) * x[i]
+            for i in items_indexes
         )
         <= capacity
+        for j in Z_indexes
     )
 
-    # t ≥ knapsack objective
-    model.addConstr(
-        t
-        <= gp.quicksum(is_item_selected[i] * items[i].value for i in range(len(items)))
+    model.setObjective(
+        gp.quicksum(x[i] * items[i].value for i in items_indexes), GRB.MAXIMIZE
     )
-
-    model.setObjective(t, GRB.MAXIMIZE)
 
     model.optimize()
 
-    for v in model.getVars():
-        print("%s %g" % (v.VarName, v.X))
-
-    print("Obj: %g" % model.ObjVal)
-
-
-if __name__ == "__main__":
-
-    items = [
-        Item(value=12, min_price=3, max_price=7),
-        Item(value=6, min_price=2, max_price=3),
-        Item(value=5, min_price=2, max_price=3),
-        Item(value=5, min_price=1, max_price=2),
-    ]
-
-    solve_robust_knapsack(items=items, uncertainty_budget=2, capacity=7)
+    return [x[i].X for i in items_indexes], model.ObjVal

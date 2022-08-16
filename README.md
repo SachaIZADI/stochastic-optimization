@@ -59,7 +59,6 @@ poetry run sto --help
 
 TODO:
 - [ ] Reprendre VaR
-- [ ] Robust backpack?
 
 ### News vendor
 
@@ -159,10 +158,82 @@ We see that minimizing CVaR tends to collapse the profits (and losses) distribut
 
 ![Alt text](media/news_vendor/expected_profit_analytic.png)
 
+### Robust knapsack
+
+#### How to run the code
+
+The code is available under `stochastic_optimization/robust_knapsack/…`
+
+You can run the following command to launch the news vendor problem
+```shell
+❯ poetry run sto robust-knapsack --help
+
+Usage: sto robust-knapsack [OPTIONS]
+
+Options:
+  -i, --item TEXT               Items to be selected in the knapsack problem.
+                                Expected format is a string of floats
+                                separated by a ',' with numbers in the
+                                following order: "value, min_weight,
+                                max_weight" e.g. "12, 3, 7"
+  --uncertainty-budget INTEGER  Uncertainty budget to robust resolution
+  --capacity INTEGER            Total capacity budget of the knapsack
+  --help                        Show this message and exit.
+
+```
+
+#### Results & discussion
+
+We implemented the example from [Optimisation robuste: faire face au pire cas](http://www.roadef.org/journee_aquitaine/pdf/IMB_RO.pdf) (see slide 18) and found the same results, which is a reassuring unit-test. The complexity of this implementation was to properly formulate the "worst case scenario" constraint, which required to pre-compute "many" scenarios and introduce one constraint per scenario.
+
+__Ignoring randomness:__
+```shell
+poetry run sto robust-knapsack \
+   --uncertainty-budget 0 \
+   --capacity 7 \
+   --item "12, 3, 7" \
+   --item "6, 2, 3" \
+   --item "5, 2, 3" \
+   --item "5, 1, 2"
+
+Chosen items: [1.0, 1.0, 1.0, 0.0]
+Objective at optimality: 23.0
+```
+
+
+__Basic worst case scenario:__
+```shell
+poetry run sto robust-knapsack \
+   --uncertainty-budget 4 \
+   --capacity 7 \
+   --item "12, 3, 7" \
+   --item "6, 2, 3" \
+   --item "5, 2, 3" \
+   --item "5, 1, 2"
+
+Chosen items: [1.0, 0.0, -0.0, 0.0]
+Objective at optimality: 12.0
+```
+
+__Robust optimization with uncertainty budget 2:__
+```shell
+poetry run sto robust-knapsack \
+   --uncertainty-budget 2 \
+   --capacity 7 \
+   --item "12, 3, 7" \
+   --item "6, 2, 3" \
+   --item "5, 2, 3" \
+   --item "5, 1, 2"
+
+Chosen items: [-0.0, 1.0, 1.0, 1.0]
+Objective at optimality: 16.0
+```
 
 ## Some references (and personal reading notes)
 
-### [Solving Simple Stochastic Optimization Problems with Gurobi](https://www.youtube.com/watch?v=Jb4a8T5qyVQ)
+### Stochastic Optimization
+
+#### [Solving Simple Stochastic Optimization Problems with Gurobi](https://www.youtube.com/watch?v=Jb4a8T5qyVQ)
 
 [![Solving Simple Stochastic Optimization Problems with Gurobi](https://img.youtube.com/vi/Jb4a8T5qyVQ/0.jpg)](https://www.youtube.com/watch?v=Jb4a8T5qyVQ)
 
@@ -189,7 +260,7 @@ A nice introduction to stochastic problems, using a pratical example with the ne
 > - With continuous variables: sampling is enough under most general conditions. "Sample average approximation method". `Z(x*) ≥ Zp ≥ E[Zp^]`
 
 
-### [Stochastic and dynamic programming - ENSTA Paris Saclay](http://cermics.enpc.fr/~leclerev/OptimizationSaclay.html)
+#### [Stochastic and dynamic programming - ENSTA Paris Saclay](http://cermics.enpc.fr/~leclerev/OptimizationSaclay.html)
 
 University course covering both stochastic programming and dynamic progamming. I only focused on the former. Completes well the Gurobi webinar & has some practical exercises.
 
@@ -204,7 +275,13 @@ University course covering both stochastic programming and dynamic progamming. I
 >    - Chance-constraint `P(g(u, Ω) < 0) ≥ 1 - eps` ( butdoesn't tell you what happens when the constraint is not satisfied)
 >    - `CVaR-a[g(u,Ω)] < 0`
 
-### [Optimisation robuste: faire face au pire cas](http://www.roadef.org/journee_aquitaine/pdf/IMB_RO.pdf)
+#### [Stochastic optimization and learning - a unified framework](https://castlelab.princeton.edu/wp-content/uploads/2018/01/Powell_StochOptandLearningJan072018.pdf)
+
+Very complete textbook on stochastic optimization with various flavours (stochastic programming, optimal control, dynamic programming, online learning, multiarm bandits, etc.). Didn't have time to properly dig into it, but I'll keep it in mind for future reference.
+
+## Robust optimization
+
+#### [Optimisation robuste: faire face au pire cas](http://www.roadef.org/journee_aquitaine/pdf/IMB_RO.pdf)
 
 Quite different from the other ones. Focus on robust optimization: optimizing under the worst-case scenario (thus removing the notion of stochasticity).
 
@@ -220,7 +297,26 @@ Quite different from the other ones. Focus on robust optimization: optimizing un
 >   - look-up for solutions with optimal cost, that are still feasible under this set of deviations.
 > - Example of the robust knapsack
 
+#### [The Price of Robustness](https://www.robustopt.com/references/Price%20of%20Robustness.pdf)
 
-### [Stochastic optimization and learning - a unified framework](https://castlelab.princeton.edu/wp-content/uploads/2018/01/Powell_StochOptandLearningJan072018.pdf)
+A reference article on robust optimization. Solves the robust knapsack problem as an application problem. It introduces a new (non-linear) formulation of robust problems and reformulates it as a linear problem.
+We used this formulation in our implementation of the robust knapsack
 
-Very complete textbook on stochastic optimization with various flavours (stochastic programming, optimal control, dynamic programming, online learning, multiarm bandits, etc.). Didn't have time to properly dig into it, but I'll keep it in mind for future reference.
+Non-linear formulation
+
+![Alt text](media/robust/robust_non_linear_formulation.png)
+
+Linear formulation
+
+![Alt text](media/robust/robust_linear_formulation.png)
+
+
+#### [Exact solution of the robust knapsack problem](https://www.sciencedirect.com/science/article/pii/S0305054813001342)
+
+Focus on the robust knapsack problem (implemented in this repo). I initially though this would be an easy toy problem to implement. It turned out to be a more complex min-max problem (as it is quite tricky to efficiently formulate a not-too-optimistic "worst case scenario" constraint). There are several algorithms to solve this problem - the paper focuses on DP and benchmarks against others.
+
+Additional reading [Knapsack problem and variants](https://www.euro-online.org/websites/esicup/wp-content/uploads/sites/12/2019/05/esicup2019-michelemonaci.pdf) - esp. slides 17-18 for benchmarks of methods
+
+#### [RSOME](https://xiongpengnus.github.io/rsome/)
+
+Not exactly readings per se, but a `python` package to implement robust optimization problems.
