@@ -1,5 +1,13 @@
 # Stochastic Optimization
 
+- [Installation](#installation)
+- [How to use the project](#how-to-use-the-project)
+   - [News vendor](#news-vendor)
+   - [Robust knapsack](#robust-knapsack)
+- [References](#some-references-and-personal-reading-notes)
+   - [Stochastic Optimization](#stochastic-optimization-1)
+   - [Robust optimization](#robust-optimization)
+
 ## Installation
 
 ### Python environment
