@@ -65,9 +65,6 @@ You can use the cli to run the code:
 poetry run sto --help
 ```
 
-TODO:
-- [ ] Reprendre VaR
-
 ### News vendor
 
 #### How to run the code
@@ -140,17 +137,6 @@ Good sanity check: the LP implementation and the analytic solution to the proble
 ![Alt text](media/news_vendor/expected_profit_analytic.png)
 ![Alt text](media/news_vendor/expected_profit_lp.png)
 
-##### Minimizing VaR-a
-**⚠️ Results do not seem consistent: implementation to be investigated**
-VaR-0.75
-![Alt text](media/news_vendor/VaR75.png)
-
-VaR-0.85
-![Alt text](media/news_vendor/VaR85.png)
-
-VaR-0.95
-![Alt text](media/news_vendor/VaR95.png)
-
 ##### Minimizing CVaR-a
 We see that minimizing CVaR tends to collapse the profits (and losses) distribution into a smaller spread: we hedge against very bad outcomes, at the price of reducing the economic profit in case of very good events (i.e. high volume of next-day demand).
 
@@ -165,6 +151,25 @@ We see that minimizing CVaR tends to collapse the profits (and losses) distribut
 - Expected profit (for comparison)
 
 ![Alt text](media/news_vendor/expected_profit_analytic.png)
+
+##### Minimizing VaR-a
+
+We see that minimizing VaR tends to push the profits (and losses) distribution to the right-hand-side and collapse into a smaller spread. We hedge against very bad outcomes, at the price of reducing the economic profit in case of very good events (i.e. high volume of next-day demand). What is a bit surprising here is that it also improves the expected profit (but decreases the maximal profit in case of very good events - _which is an expected behaviour_).
+
+- VaR-0.85
+
+![Alt text](media/news_vendor/VaR85.png)
+
+- VaR-0.95
+
+![Alt text](media/news_vendor/VaR95.png)
+
+- Expected profit (for comparison)
+
+![Alt text](media/news_vendor/expected_profit_analytic.png)
+
+NOTE: ⚠️ Results do not always seem consistent accross runs. Implementation to be investigated (but it seems consistent with other implementations found - e.g. ["Optimization of Value-at-Risk: Computational Aspects of MIP
+Formulations"](https://www.researchgate.net/profile/Konstantin-Pavlikov/publication/309550219_Optimization_of_Value-at-Risk_Computational_Aspects_of_MIP_Formulations/links/5b1e369645851587f29f819f/Optimization-of-Value-at-Risk-Computational-Aspects-of-MIP-Formulations.pdf))
 
 ### Robust knapsack
 
@@ -194,7 +199,7 @@ Options:
 
 We implemented the example from [Optimisation robuste: faire face au pire cas](http://www.roadef.org/journee_aquitaine/pdf/IMB_RO.pdf) (see slide 18) and found the same results, which is a reassuring unit-test. The complexity of this implementation was to properly formulate the "worst case scenario" constraint, which required to pre-compute "many" scenarios and introduce one constraint per scenario.
 
-__Ignoring randomness:__
+_Ignoring randomness:_
 ```shell
 poetry run sto robust-knapsack \
    --uncertainty-budget 0 \
@@ -209,7 +214,7 @@ Objective at optimality: 23.0
 ```
 
 
-__Basic worst case scenario:__
+_Basic worst case scenario:_
 ```shell
 poetry run sto robust-knapsack \
    --uncertainty-budget 4 \
@@ -223,7 +228,7 @@ Chosen items: [1.0, 0.0, -0.0, 0.0]
 Objective at optimality: 12.0
 ```
 
-__Robust optimization with uncertainty budget 2:__
+_Robust optimization with uncertainty budget 2:_
 ```shell
 poetry run sto robust-knapsack \
    --uncertainty-budget 2 \

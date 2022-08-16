@@ -181,7 +181,7 @@ def min_value_at_risk_solution(
         for d in demand.values
     )
 
-    # VaR definition as a 1-alpha quantile
+    # VaR definition as a alpha quantile
     model.addConstr(
         gp.quicksum(is_risk_lower_than_VaR[d] * demand.rv.pmf(d) for d in demand.values)
         >= alpha
